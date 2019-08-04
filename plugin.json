@@ -1,0 +1,21 @@
+{
+    "id" : "pdf-report",
+    "version" : "0.0.1",
+    "name" : "pdf Report",
+    "description" : "Pdf reporting plugin",
+    "install": {
+        "windows": [],
+        "linux": [],
+        "darwin": []
+    },
+    "command" : {
+        "windows" : ["bin/pdf-report"],
+        "linux" : ["bin/pdf-report"],
+        "darwin" : ["bin/pdf-report"]
+    },
+    "scope" : ["Execution"],
+    "gaugeVersionSupport": {
+        "minimum": "0.8.0",
+        "maximum": ""
+    }
+}
