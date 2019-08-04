@@ -24,7 +24,7 @@ const (
 	pluginActionEnv             = "pdf-report_action"
 	pdfReport                   = "pdf-report"
 	overwriteReportsEnvProperty = "overwrite_reports"
-	resultFile                  = "result.pdf"
+	resultFile                  = "report.pdf"
 	timeFormat                  = "2006-01-02 15.04.05"
 )
 

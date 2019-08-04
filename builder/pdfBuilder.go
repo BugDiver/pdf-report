@@ -1,7 +1,6 @@
 package builder
 
 import (
-	"bufio"
 	"bytes"
 	"fmt"
 	"io"
@@ -32,22 +31,25 @@ func NewPDFBuilder(pluginDir, projectDir, reportDir string) *PDFBuilder {
 		projectDir: projectDir,
 		reportDir:  reportDir,
 	}
-	builder.pdf.SetMargins(0, 0, 0)
 	builder.pdf.SetHeaderFunc(builder.header)
 	builder.pdf.SetFooterFunc(builder.footer)
+	builder.pdf.SetMargins(0, 0, 0)
 	return builder
 }
 
 // Build build the pdf result
 func (builder *PDFBuilder) Build(sr *gauge_messages.SuiteExecutionResult) error {
 	builder.suiteResult = sr.GetSuiteResult()
+	builder.pdf.AddPage()
 	builder.addMainPage()
+	// builder.buildSpecPages()
 	return nil
 }
 
 // WriteTo write pdf contents to given writer
 func (builder *PDFBuilder) WriteTo(w io.Writer) error {
 	if e := builder.pdf.Error(); e != nil {
+		fmt.Println(e)
 		return e
 	}
 	return builder.pdf.Output(w)
@@ -59,30 +61,7 @@ func (builder *PDFBuilder) header() {
 	w, _ := builder.pdf.GetPageSize()
 	builder.pdf.CellFormat(w/2, 15, "Gauge Execution Report", "", 0, "L", true, 0, "")
 	builder.pdf.CellFormat(w/2, 15, fmt.Sprintf("Project: %s ", builder.suiteResult.GetProjectName()), "", 0, "R", true, 0, "")
-}
-
-func (builder *PDFBuilder) addMainPage() error {
-	err := builder.drawPieChart()
-	if err != nil {
-		return err
-	}
-	return nil
-}
-
-func (builder *PDFBuilder) drawPieChart() error {
-	var b bytes.Buffer
-	w := bufio.NewWriter(&b)
-	err := drawPieChart(builder.suiteResult, w)
-	if err != nil {
-		return err
-	}
-	builder.registerImage("pieChart", b.Bytes())
-	builder.pdf.AddPage()
-	builder.pdf.ImageOptions("pieChart", 7, 20, 50, 50, false, imgOptions, 0, "")
-	if err = builder.pdf.Error(); err != nil {
-		return err
-	}
-	return nil
+	builder.pdf.Ln(15)
 }
 
 func (builder *PDFBuilder) registerImage(imgName string, b []byte) error {
@@ -95,8 +74,7 @@ func (builder *PDFBuilder) registerImage(imgName string, b []byte) error {
 }
 
 func (builder *PDFBuilder) footer() {
-	builder.pdf.SetFillColor(170, 170, 170)
 	imageFile := filepath.Join(builder.pluginDir, "assets", "images", "logo.png")
 	w, h := builder.pdf.GetPageSize()
-	builder.pdf.ImageOptions(imageFile, (w/2)-7, h-6, 14, 6, false, imgOptions, 0, "")
+	builder.pdf.ImageOptions(imageFile, (w/2)-9, h-8, 18, 8, false, imgOptions, 0, "")
 }

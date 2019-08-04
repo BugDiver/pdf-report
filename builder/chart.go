@@ -9,29 +9,21 @@ import (
 )
 
 func drawPieChart(sr *gauge_messages.ProtoSuiteResult, w io.Writer) error {
-	var totalSpecs float64
-	if sr.SpecResults != nil {
-		totalSpecs = float64(len(sr.SpecResults))
-	}
-
-	failedSpecs := float64(sr.GetSpecsFailedCount())
-	skippedSpec := float64(sr.GetSpecsSkippedCount())
-	passedSpecs := totalSpecs - (failedSpecs + skippedSpec)
-
+	s := specSummary(sr)
 	pie := chart.PieChart{
 		Width:  512,
 		Height: 512,
 		Values: []chart.Value{
 			chart.Value{
-				Value: passedSpecs,
+				Value: float64(s.passed),
 				Style: style(39, 202, 169),
 			},
 			chart.Value{
-				Value: skippedSpec,
+				Value: float64(s.skipped),
 				Style: style(153, 153, 153),
 			},
 			chart.Value{
-				Value: failedSpecs,
+				Value: float64(s.failed),
 				Style: style(231, 62, 72),
 			},
 		},
@@ -58,16 +50,3 @@ func style(r, g, b uint8) chart.Style {
 		Show:        true,
 	}
 }
-
-// totalScenarios, failedSceanrio, skippedScenarios := 0, 0
-// for _, s := range sr.SpecResults {
-// 	totalScenarios += s.GetScenarioCount()
-// 	failedSceanrios += s.GetScenarioFailedCount()
-// 	skippedScenarios += s.GetScenarioSkippedCount()
-// }
-// scenarioSummary :=  &summary{
-// 	total: totalScenarios,
-// 	failed: failedSceanrios,
-// 	skipped: skippedScenarios,
-// 	passed: totalScenarios - (failedSceanrio + skippedScenarios)
-// }
