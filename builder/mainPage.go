@@ -6,56 +6,102 @@ import (
 	"fmt"
 	"math"
 	"pdf-report/gauge_messages"
+	"sort"
 	"strings"
 	"time"
 )
 
 func (builder *PDFBuilder) addMainPage() error {
+	builder.pdf.Ln(-1)
 	if builder.suiteResult.GetPreHookFailure() == nil {
-		err := builder.drawPieChart()
+		err := builder.addPieChart()
 		if err != nil {
 			return err
 		}
 	}
 
-	builder.buildStats()
-	builder.buildDetails()
+	builder.addStats()
+	builder.addDetails()
+	builder.pdf.Ln(-1)
+	builder.pdf.Ln(2)
 	if !builder.suiteResult.Failed {
-		builder.buildCongratsMessage()
+		builder.addCongratsMessage()
 	}
 
 	if hf := builder.suiteResult.GetPreHookFailure(); hf != nil {
-		builder.buildSuiteHookFailure("Before", hf)
+		builder.addSuiteHookFailure("Before", hf)
 	}
 
 	if hf := builder.suiteResult.GetPostHookFailure(); hf != nil {
-		builder.buildSuiteHookFailure("After", hf)
+		builder.addSuiteHookFailure("After", hf)
 	}
+
+	builder.addSpecsToc()
 
 	return nil
 }
 
-func (builder *PDFBuilder) buildSuiteHookFailure(level string, hf *gauge_messages.ProtoHookFailure) {
-	w, _ := builder.pdf.GetPageSize()
+func (builder *PDFBuilder) addSpecsToc() {
+	builder.pdf.Ln(-1)
+	builder.pdf.Ln(5)
+	builder.pdf.SetFont("Arial", "B", 15)
+	builder.pdf.CellFormat(10, 6, "", "", 0, "", false, 0, "")
+	builder.pdf.CellFormat(20, 6, "Specificaitons:", "", 0, "", false, 0, "")
 
-	builder.pdf.SetTextColor(0, 0, 0)
+	builder.pdf.Ln(3)
+	builder.pdf.SetFont("Arial", "I", 12)
+
+	specs := (*builder.suiteResult).SpecResults
+	sort.Slice(specs, func(i, j int) bool {
+		return getState(specs[i]) < getState(specs[j])
+	})
+
+	for _, res := range builder.suiteResult.SpecResults {
+		builder.pdf.Ln(-1)
+		builder.pdf.Ln(1)
+		if res.Failed {
+			builder.pdf.SetFillColor(231, 62, 72)
+			builder.pdf.SetTextColor(231, 62, 72)
+		} else if res.Skipped {
+			builder.pdf.SetFillColor(153, 153, 153)
+			builder.pdf.SetTextColor(153, 153, 153)
+		} else {
+			builder.pdf.SetFillColor(39, 202, 169)
+			builder.pdf.SetTextColor(39, 202, 169)
+		}
+		link := builder.pdf.AddLink()
+		builder.specsPageLinks[res] = link
+		w, _ := builder.pdf.GetPageSize()
+		builder.pdf.CellFormat(12, 10, "", "", 0, "", false, 0, "")
+		builder.pdf.CellFormat(1, 10, "", "", 0, "", true, 0, "")
+		builder.pdf.CellFormat(w-50, 10, res.GetProtoSpec().GetSpecHeading(), "", 0, "", false, link, "")
+		builder.pdf.SetTextColor(0, 0, 0)
+		builder.pdf.CellFormat(30, 10, formatTime(res.GetExecutionTime()), "", 0, "", false, link, "")
+	}
+
+	builder.resetStyle()
+}
+
+func (builder *PDFBuilder) addSuiteHookFailure(level string, hf *gauge_messages.ProtoHookFailure) {
+	builder.pdf.Ln(-1)
+	w, _ := builder.pdf.GetPageSize()
+	builder.pdf.SetTextColor(231, 62, 72)
 	builder.pdf.SetFont("Arial", "B", 10)
 	builder.pdf.CellFormat(10, 6, "", "", 0, "", false, 0, "")
 	builder.pdf.CellFormat(w, 6, fmt.Sprintf("%s Suite Failed:", level), "", 0, "", false, 0, "")
 
-	builder.pdf.Ln(8)
-
+	builder.pdf.Ln(-1)
+	builder.pdf.Ln(2)
 	builder.pdf.SetFont("Arial", "I", 10)
-	builder.pdf.SetTextColor(231, 62, 72)
 	builder.pdf.CellFormat(12, 6, "", "", 0, "", false, 0, "")
 	str := fmt.Sprintf("Error: %s\nStackTrace:\n%s", hf.GetErrorMessage(), getChoppedST(hf.GetStackTrace()))
 	builder.pdf.MultiCell(w-24, 6, str, "L", "L", true)
-
-	builder.pdf.Ln(10)
+	builder.resetStyle()
 }
 
-func (builder *PDFBuilder) buildCongratsMessage() {
-
+func (builder *PDFBuilder) addCongratsMessage() {
+	builder.pdf.Ln(-1)
+	builder.pdf.Ln(5)
 	builder.pdf.SetFont("Arial", "", 15)
 
 	builder.pdf.CellFormat(25, 10, "", "", 0, "", false, 0, "")
@@ -65,15 +111,13 @@ func (builder *PDFBuilder) buildCongratsMessage() {
 	builder.pdf.SetTextColor(255, 255, 255)
 	builder.pdf.CellFormat(16, 10, "Green", "", 0, "C", true, 0, "")
 
-	builder.pdf.SetFillColor(255, 255, 255)
-	builder.pdf.SetTextColor(0, 0, 0)
+	builder.resetStyle()
+	builder.pdf.SetFont("Arial", "", 15)
 	builder.pdf.CellFormat(68, 10, "and saved the environment!", "", 0, "", true, 0, "")
-
-	builder.pdf.Ln(20)
 }
 
-func (builder *PDFBuilder) buildStats() {
-	builder.pdf.Ln(12)
+func (builder *PDFBuilder) addStats() {
+	builder.pdf.Ln(-1)
 
 	specStats := specSummary(builder.suiteResult)
 	scenStats := scenarioSummary(builder.suiteResult)
@@ -117,48 +161,46 @@ func (builder *PDFBuilder) buildStats() {
 	builder.pdf.SetTextColor(153, 153, 153)
 	builder.pdf.CellFormat(25, 14, fmt.Sprintf("%d", scenStats.skipped), "", 0, "C", true, 0, "")
 
-	builder.pdf.SetTextColor(0, 0, 0)
-	builder.pdf.SetFillColor(255, 255, 255)
-
-	builder.pdf.Ln(20)
+	builder.resetStyle()
 
 }
 
-func (builder *PDFBuilder) buildDetails() {
-
-	builder.pdf.Ln(10)
-
+func (builder *PDFBuilder) addDetails() {
+	builder.pdf.Ln(-1)
+	builder.pdf.Ln(5)
 	w, _ := builder.pdf.GetPageSize()
-	builder.pdf.CellFormat(w/5, 12, "", "", 0, "", false, 0, "")
-	builder.pdf.CellFormat(w/5, 12, "Environment:", "B", 0, "", true, 0, "")
-	builder.pdf.CellFormat(w/5, 12, "", "B", 0, "", true, 0, "")
-	builder.pdf.CellFormat(w/5, 12, builder.suiteResult.Environment, "B", 0, "", true, 0, "")
+	builder.pdf.CellFormat(w/5, 10, "", "", 0, "", false, 0, "")
+	builder.pdf.CellFormat(w/5, 10, "Environment:", "B", 0, "", true, 0, "")
+	builder.pdf.CellFormat(w/5, 10, "", "B", 0, "", true, 0, "")
+	builder.pdf.CellFormat(w/5, 10, builder.suiteResult.Environment, "B", 0, "", true, 0, "")
 
 	builder.pdf.Ln(-1)
-	builder.pdf.CellFormat(w/5, 12, "", "", 0, "", false, 0, "")
-	builder.pdf.CellFormat(w/5, 12, "Success Rate:", "B", 0, "", true, 0, "")
-	builder.pdf.CellFormat(w/5, 12, "", "B", 0, "", true, 0, "")
-	builder.pdf.CellFormat(w/5, 12, fmt.Sprintf("%1f%s", math.Round(float64(builder.suiteResult.SuccessRate)), "%"), "B", 0, "", true, 0, "")
+	builder.pdf.Ln(1)
+	builder.pdf.CellFormat(w/5, 10, "", "", 0, "", false, 0, "")
+	builder.pdf.CellFormat(w/5, 10, "Success Rate:", "B", 0, "", true, 0, "")
+	builder.pdf.CellFormat(w/5, 10, "", "B", 0, "", true, 0, "")
+	fmt.Println(math.Round(float64(builder.suiteResult.SuccessRate)))
+	builder.pdf.CellFormat(w/5, 10, fmt.Sprintf("%1f%s", math.Round(float64(builder.suiteResult.SuccessRate)), "%"), "B", 0, "", true, 0, "")
 
 	builder.pdf.Ln(-1)
-	builder.pdf.CellFormat(w/5, 12, "", "", 0, "", false, 0, "")
-	builder.pdf.CellFormat(w/5, 12, "Total Time:", "B", 0, "", true, 0, "")
-	builder.pdf.CellFormat(w/5, 12, "", "B", 0, "", true, 0, "")
-	builder.pdf.CellFormat(w/5, 12, formatTime(builder.suiteResult.ExecutionTime), "B", 0, "", true, 0, "")
+	builder.pdf.Ln(1)
+	builder.pdf.CellFormat(w/5, 10, "", "", 0, "", false, 0, "")
+	builder.pdf.CellFormat(w/5, 10, "Total Time:", "B", 0, "", true, 0, "")
+	builder.pdf.CellFormat(w/5, 10, "", "B", 0, "", true, 0, "")
+	builder.pdf.CellFormat(w/5, 10, formatTime(builder.suiteResult.ExecutionTime), "B", 0, "", true, 0, "")
 
 	builder.pdf.Ln(-1)
-	builder.pdf.CellFormat(w/5, 12, "", "", 0, "", false, 0, "")
-	builder.pdf.CellFormat(w/5, 12, "Generated On:", "B", 0, "", true, 0, "")
-	builder.pdf.CellFormat(w/5, 12, "", "B", 0, "", true, 0, "")
-	builder.pdf.CellFormat(w/5, 12, builder.suiteResult.Timestamp, "B", 0, "", true, 0, "")
-
-	builder.pdf.Ln(20)
+	builder.pdf.Ln(1)
+	builder.pdf.CellFormat(w/5, 10, "", "", 0, "", false, 0, "")
+	builder.pdf.CellFormat(w/5, 10, "Generated On:", "B", 0, "", true, 0, "")
+	builder.pdf.CellFormat(w/5, 10, "", "B", 0, "", true, 0, "")
+	builder.pdf.CellFormat(w/5, 10, builder.suiteResult.Timestamp, "B", 0, "", true, 0, "")
 }
 
-func (builder *PDFBuilder) drawPieChart() error {
+func (builder *PDFBuilder) addPieChart() error {
 	var b bytes.Buffer
 	w := bufio.NewWriter(&b)
-	err := drawPieChart(builder.suiteResult, w)
+	err := createPieChart(builder.suiteResult, w)
 	if err != nil {
 		return err
 	}
@@ -171,18 +213,28 @@ func (builder *PDFBuilder) drawPieChart() error {
 }
 
 func formatTime(ms int64) string {
-	return time.Unix(0, ms*int64(time.Millisecond)).UTC().Format("00:00:00")
+	return time.Unix(0, ms*int64(time.Millisecond)).UTC().Format("15:04:05.000")
 }
 
 func getChoppedST(st string) string {
 	stacks := strings.Split(st, "\n")
 	newStack := []string{}
 	for i, s := range stacks {
-		if i <= 5 {
-			newStack = append(newStack, fmt.Sprintf("\t%s", s))
+		if i <= 2 {
+			newStack = append(newStack, fmt.Sprintf("\t\t%s", s))
 		} else {
 			break
 		}
 	}
 	return strings.Join(newStack, "\n")
+}
+
+func getState(s *gauge_messages.ProtoSpecResult) int {
+	if s.Failed {
+		return -1
+	}
+	if s.Skipped {
+		return 0
+	}
+	return 1
 }

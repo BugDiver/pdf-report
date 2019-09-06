@@ -42,7 +42,7 @@ func createReport(suiteResult *gauge_messages.SuiteExecutionResult) {
 	if err != nil {
 		logger.Fatal("Report generation failed: %s \n", err)
 	}
-	logger.Info("Successfully generated pdf-report to => %s", dir)
+	logger.Info("Successfully generated pdf-report to => %s", filepath.Join(dir, resultFile))
 }
 
 func writeResultFile(reportDir string, builder *builder.PDFBuilder) error {

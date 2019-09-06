@@ -8,7 +8,7 @@ import (
 	"github.com/wcharczuk/go-chart/drawing"
 )
 
-func drawPieChart(sr *gauge_messages.ProtoSuiteResult, w io.Writer) error {
+func createPieChart(sr *gauge_messages.ProtoSuiteResult, w io.Writer) error {
 	s := specSummary(sr)
 	pie := chart.PieChart{
 		Width:  512,
