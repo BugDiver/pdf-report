@@ -6,7 +6,6 @@ import (
 	"fmt"
 	"math"
 	"pdf-report/gauge_messages"
-	"sort"
 	"strings"
 	"time"
 )
@@ -39,47 +38,6 @@ func (builder *PDFBuilder) addMainPage() error {
 	builder.addSpecsToc()
 
 	return nil
-}
-
-func (builder *PDFBuilder) addSpecsToc() {
-	builder.pdf.Ln(-1)
-	builder.pdf.Ln(5)
-	builder.pdf.SetFont("Arial", "B", 15)
-	builder.pdf.CellFormat(10, 6, "", "", 0, "", false, 0, "")
-	builder.pdf.CellFormat(20, 6, "Specificaitons:", "", 0, "", false, 0, "")
-
-	builder.pdf.Ln(3)
-	builder.pdf.SetFont("Arial", "I", 12)
-
-	specs := (*builder.suiteResult).SpecResults
-	sort.Slice(specs, func(i, j int) bool {
-		return getState(specs[i]) < getState(specs[j])
-	})
-
-	for _, res := range builder.suiteResult.SpecResults {
-		builder.pdf.Ln(-1)
-		builder.pdf.Ln(1)
-		if res.Failed {
-			builder.pdf.SetFillColor(231, 62, 72)
-			builder.pdf.SetTextColor(231, 62, 72)
-		} else if res.Skipped {
-			builder.pdf.SetFillColor(153, 153, 153)
-			builder.pdf.SetTextColor(153, 153, 153)
-		} else {
-			builder.pdf.SetFillColor(39, 202, 169)
-			builder.pdf.SetTextColor(39, 202, 169)
-		}
-		link := builder.pdf.AddLink()
-		builder.specsPageLinks[res] = link
-		w, _ := builder.pdf.GetPageSize()
-		builder.pdf.CellFormat(12, 10, "", "", 0, "", false, 0, "")
-		builder.pdf.CellFormat(1, 10, "", "", 0, "", true, 0, "")
-		builder.pdf.CellFormat(w-50, 10, res.GetProtoSpec().GetSpecHeading(), "", 0, "", false, link, "")
-		builder.pdf.SetTextColor(0, 0, 0)
-		builder.pdf.CellFormat(30, 10, formatTime(res.GetExecutionTime()), "", 0, "", false, link, "")
-	}
-
-	builder.resetStyle()
 }
 
 func (builder *PDFBuilder) addSuiteHookFailure(level string, hf *gauge_messages.ProtoHookFailure) {
@@ -179,8 +137,7 @@ func (builder *PDFBuilder) addDetails() {
 	builder.pdf.CellFormat(w/5, 10, "", "", 0, "", false, 0, "")
 	builder.pdf.CellFormat(w/5, 10, "Success Rate:", "B", 0, "", true, 0, "")
 	builder.pdf.CellFormat(w/5, 10, "", "B", 0, "", true, 0, "")
-	fmt.Println(math.Round(float64(builder.suiteResult.SuccessRate)))
-	builder.pdf.CellFormat(w/5, 10, fmt.Sprintf("%1f%s", math.Round(float64(builder.suiteResult.SuccessRate)), "%"), "B", 0, "", true, 0, "")
+	builder.pdf.CellFormat(w/5, 10, fmt.Sprintf("%.2f%s", math.Round(float64(builder.suiteResult.SuccessRate)), "%"), "B", 0, "", true, 0, "")
 
 	builder.pdf.Ln(-1)
 	builder.pdf.Ln(1)
@@ -230,6 +187,16 @@ func getChoppedST(st string) string {
 }
 
 func getState(s *gauge_messages.ProtoSpecResult) int {
+	if s.Failed {
+		return -1
+	}
+	if s.Skipped {
+		return 0
+	}
+	return 1
+}
+
+func getScenarioState(s *gauge_messages.ProtoScenario) int {
 	if s.Failed {
 		return -1
 	}

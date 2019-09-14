@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"fmt"
 	"io"
+	"os"
 	"path/filepath"
 	"pdf-report/gauge_messages"
 
@@ -23,11 +24,16 @@ type PDFBuilder struct {
 	projectDir     string
 	reportDir      string
 	indexPageLink  int
+	translate      func(string) string
 }
 
 // NewPDFBuilder creates a new pdf builder
 func NewPDFBuilder(pluginDir, projectDir, reportDir string) *PDFBuilder {
-	pdf := gofpdf.New("P", "mm", "A4", "")
+	o := os.Getenv("pdf_report_page_orientation")
+	if o == "" {
+		o = "P"
+	}
+	pdf := gofpdf.New(o, "mm", "A4", "")
 	pdf.SetTitle("Gauge Execution Report", true)
 	builder := &PDFBuilder{pdf: pdf,
 		pluginDir:      pluginDir,
@@ -35,6 +41,7 @@ func NewPDFBuilder(pluginDir, projectDir, reportDir string) *PDFBuilder {
 		reportDir:      reportDir,
 		specsPageLinks: map[*gauge_messages.ProtoSpecResult]int{},
 		indexPageLink:  pdf.AddLink(),
+		translate:      pdf.UnicodeTranslatorFromDescriptor(""),
 	}
 	builder.pdf.SetMargins(0, 0, 0)
 	return builder
