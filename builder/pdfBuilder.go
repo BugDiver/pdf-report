@@ -29,7 +29,7 @@ type PDFBuilder struct {
 
 // NewPDFBuilder creates a new pdf builder
 func NewPDFBuilder(pluginDir, projectDir, reportDir string) *PDFBuilder {
-	o := os.Getenv("pdf_report_page_orientation")
+	o := os.Getenv("gauge_pdf_report_page_orientation")
 	if o == "" {
 		o = "P"
 	}
@@ -57,8 +57,8 @@ func (builder *PDFBuilder) Build(sr *gauge_messages.SuiteExecutionResult) error 
 	return nil
 }
 
-// WriteTo write pdf contents to given writer
-func (builder *PDFBuilder) WriteTo(w io.Writer) error {
+// WriteReportTo write pdf contents to given writer
+func (builder *PDFBuilder) WriteReportTo(w io.Writer) error {
 	if e := builder.pdf.Error(); e != nil {
 		fmt.Println(e)
 		return e

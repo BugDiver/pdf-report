@@ -52,7 +52,7 @@ func writeResultFile(reportDir string, builder *builder.PDFBuilder) error {
 		fmt.Println(err)
 		return fmt.Errorf("failed to create file: %s %s.\n ", resultPath, err)
 	}
-	return builder.WriteTo(f)
+	return builder.WriteReportTo(f)
 }
 
 func createExecutionReport() {
