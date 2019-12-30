@@ -27,7 +27,7 @@ jobs:
         run: |
           cd deploy
           if [ -z "$version" ]; then
-            version=$(ls html-report* | head -1 | sed "s/\.[^\.]*$//" | sed "s/html-report-//" | sed "s/-[a-z]*\.[a-z0-9_]*$//");
+            version=$(ls pdf-report* | head -1 | sed "s/\.[^\.]*$//" | sed "s/pdf-report-//" | sed "s/-[a-z]*\.[a-z0-9_]*$//");
           fi
           artifacts=()
           dir=`pwd`
@@ -38,7 +38,7 @@ jobs:
           echo "---------------------------"
           echo "Updating release v$version"
           echo "---------------------------"
-          echo -e "HTML Report v$version\n\n" > desc.txt
+          echo -e "Pdf Report v$version\n\n" > desc.txt
           release_description=$(ruby -e "$(curl -sSfL https://github.com/BugDiver/pdf-report/raw/master/build/create_release_text.rb)" pdf-report BugDiver)
           echo "$release_description" >> desc.txt
           echo "Creating new draft for release v$version"
